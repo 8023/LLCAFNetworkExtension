@@ -27,7 +27,8 @@ typedef NS_ENUM(NSUInteger, AFRequestMethod){
 typedef NS_ENUM(NSInteger, URLRequrestErrorCode) {
     
     URLRequestNotJson   = 10001,// 不是json
-    URLRequestCodeError = 10002,// 返回码错误
+    URLRequestNotDictionary = 10002, //不是字典
+    URLRequestCodeError = 10010,// 返回码错误
 };
 
 /**
@@ -44,11 +45,10 @@ typedef void (^requestResultBlock)(NSDictionary * result);
  *  @param api          URL string
  *  @param method       请求方式
  *  @param params       请求参数
- *  @param showLoading  是否显示加载图层
  *  @param success      请求成功回调
  *  @param failed       请求失败回调
  */
-- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params showLoading:(BOOL)showLoading success:(requestResultBlock)success failed:(requestResultBlock)failed;
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed;
 
 /**
  *  上传图片
@@ -57,11 +57,10 @@ typedef void (^requestResultBlock)(NSDictionary * result);
  *  @param image           图片
  *  @param imageKey        后台给的图片参数key
  *  @param params          其他参数
- *  @param showLoading     是否显示loading遮罩提示
  *  @param success 请求成功回调
  *  @param failed     请求失败回调
  */
-- (void)uploadImageWithApi:(NSString *)api image:(UIImage *)image imageKey:(NSString *)imageKey params:(NSDictionary *)params showLoading:(BOOL)showLoading success:(requestResultBlock)success failed:(requestResultBlock)failed;
+- (void)uploadImageWithApi:(NSString *)api image:(UIImage *)image imageKey:(NSString *)imageKey params:(NSDictionary *)params success:(requestResultBlock)success failed:(requestResultBlock)failed;
 
 /**
  *  更具URSSgtring取消请求

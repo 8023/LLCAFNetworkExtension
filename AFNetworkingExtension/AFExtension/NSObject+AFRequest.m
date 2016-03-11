@@ -57,261 +57,244 @@
 
 #pragma mark - NSObject+AFRequest
 
-static char * const managersKey = "managersDict";
+static char * const tasksKey = "tasksDict";
 
 
 @implementation NSObject (AFRequest)
 
 
--(void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary *)params showLoading:(BOOL)showLoading success:(requestResultBlock)success failed:(requestResultBlock)failed
+-(void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary *)params success:(requestResultBlock)success failed:(requestResultBlock)failed
 {
     NSString * urlString =  [api stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     
-    AFHTTPRequestOperationManager * manager = [AFHTTPRequestOperationManager manager];
-    manager.requestSerializer.timeoutInterval =  [DefaultHttpManager timeOutInterval];
-    manager.responseSerializer.acceptableContentTypes =  [DefaultHttpManager acceptableContentTypes];
-    
-//    if ([api hasPrefix:@"https"])
-//    {
-//        AFSecurityPolicy *securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModePublicKey];
-//        securityPolicy.allowInvalidCertificates = YES;
-//        manager.securityPolicy = securityPolicy;
-//    }
-    
+    AFHTTPSessionManager * manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [DefaultHttpManager acceptableContentTypes];
+    if ([api hasPrefix:@"https"])
+    {
+        manager.securityPolicy.allowInvalidCertificates = YES;
+    }
+
+
     for (NSString *key in  [[DefaultHttpManager httpHeader] allKeys])
     {
-        [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
+        if([DefaultHttpManager httpHeader][key])
+        {
+            [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
+        }
     }
     
-    [self addManager:manager ofUrl:urlString];
     
+    NSURLSessionDataTask * task;
     switch (method) {
         case GetMethod:
         {
-
-            NSLog(@"【Request】:\n %@",urlString);
+            NSLog(@"【GET】:\n %@",urlString);
             NSLog(@"【Params】:\n %@",params);
-
-            [manager GET:urlString parameters:params success:^(AFHTTPRequestOperation * operation, id responseObject) {
+            
+            task = [manager GET:urlString parameters:params progress:^(NSProgress * _Nonnull downloadProgress){
                 
-                NSLog(@"【Response】:\n %@",responseObject);
-
+            } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                
                 [self removeManagerOfUrl:urlString];
                 
-                if ([responseObject isKindOfClass:[NSDictionary class]]) {
-
+                NSLog(@"【Response】:\n %@",responseObject);
+                if ([responseObject isKindOfClass:[NSDictionary class]])
+                {
                     if (success)
                     {
                         success(responseObject);
                     }
-                }else
-                {
-                    NSError *error = [NSError  errorWithDomain:@"不是json数据" code:URLRequestNotJson userInfo:nil];
-                    if (failed) {
-                        failed(@{@"error":error,
-                                    @"response" :responseObject==nil?@"nil":responseObject});
-                    }
-                    
-                    NSMutableDictionary * wrongResultDict= [ NSMutableDictionary  dictionaryWithCapacity:1];
-                    if (responseObject) {
-                        [wrongResultDict setObject:responseObject forKey:@"response"];
-                    }else{
-                        [wrongResultDict setObject:@"返回数据是空" forKey:@"response"];
-                    }
-                    if (success)
-                    {
-                        success(wrongResultDict);
+                }else{
+                    //不是字典类型数据
+                    if(responseObject){
+                        if ( success)
+                        {
+                            success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
+                        }
                     }
                 }
-                
-            } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+
+            } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
                 
                 [self removeManagerOfUrl:urlString];
-                NSLog(@"【Error】:\n %@",error);
 
-                NSMutableDictionary * errorDict = [ NSMutableDictionary  dictionaryWithCapacity:2];
+                NSLog(@"【Error】:\n %@",error);
                 if ([error code] == NSURLErrorCancelled) {
                     NSLog(@"取消了请求:%@",urlString);
                 }
-                if (error) {
-                    [errorDict setObject:error forKey:@"error"];
-                }
-                if (operation.responseObject) {
-                    [errorDict setObject:operation.responseObject forKey:@"response"];
-                }
+                
                 if (failed) {
-                    failed(errorDict);
+                    failed(@{@"error":error});
                 }
             }];
+          
         }
             break;
         case PostMethod:
         {
-            [manager POST:urlString parameters:params success:^(AFHTTPRequestOperation * operation, id responseObject) {
-                [self removeManagerOfUrl:urlString];
+            NSLog(@"【POST】:\n %@",urlString);
+            NSLog(@"【Params】:\n %@",params);
+            
+           task =  [manager POST:urlString parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
                 
-                if ([responseObject isKindOfClass:[NSDictionary class]]) {
-                    
+            } progress:^(NSProgress * _Nonnull uploadProgress) {
+                
+            } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                
+                [self removeManagerOfUrl:urlString];
+
+                NSLog(@"【Response】:\n %@",responseObject);
+                if ([responseObject isKindOfClass:[NSDictionary class]])
+                {
                     if (success)
                     {
                         success(responseObject);
                     }
-                }else
-                {
-                    NSError *error = [NSError  errorWithDomain:@"不是json数据" code:URLRequestNotJson userInfo:nil];
-                    if (failed) {
-                        failed(@{@"error":error,
-                                 @"response" :responseObject==nil?@"nil":responseObject});
-                    }
-                    
-                    NSMutableDictionary * wrongResultDict= [ NSMutableDictionary  dictionaryWithCapacity:1];
-                    if (responseObject) {
-                        [wrongResultDict setObject:responseObject forKey:@"response"];
-                    }else{
-                        [wrongResultDict setObject:@"返回数据是空" forKey:@"response"];
-                    }
-                    if (success)
-                    {
-                        success(wrongResultDict);
+                }else{
+                    //不是字典类型数据
+                    if(responseObject){
+                        if ( success)
+                        {
+                            success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
+                        }
                     }
                 }
-                
-            } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+
+            } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
                 
                 [self removeManagerOfUrl:urlString];
-                
-                NSMutableDictionary * errorDict = [ NSMutableDictionary  dictionaryWithCapacity:2];
+
+                NSLog(@"【Error】:\n %@",error);
                 if ([error code] == NSURLErrorCancelled) {
                     NSLog(@"取消了请求:%@",urlString);
                 }
-                if (error) {
-                    [errorDict setObject:error forKey:@"error"];
-                }
-                if (operation.responseObject) {
-                    [errorDict setObject:operation.responseObject forKey:@"response"];
-                }
+                
                 if (failed) {
-                    failed(errorDict);
+                    failed(@{@"error":error});
                 }
-            }];
 
+            }];
+            
         }
         default:
             break;
     }
+    
+    [self addTask:task ofUrl:urlString];
 }
 
-- (void)uploadImageWithApi:(NSString *)api image:(UIImage *)image imageKey:(NSString *)imageKey params:(NSDictionary *)params showLoading:(BOOL)showLoading success:(requestResultBlock)success failed:(requestResultBlock)failed
+- (void)uploadImageWithApi:(NSString *)api image:(UIImage *)image imageKey:(NSString *)imageKey params:(NSDictionary *)params success:(requestResultBlock)success failed:(requestResultBlock)failed
 {
+    
+    
     NSString * urlString =  [api stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-
     NSData * imageData = UIImageJPEGRepresentation(image, 0.95);        //压缩
-    NSString * filePath = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingString:@"/tmp.png"];
-    
+    NSString * fileName = @"tmp.png";   //本地文件的名字。可以用时间戳
+    NSString * filePath = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingFormat:@"/%@",fileName];
     [[NSFileManager defaultManager] createFileAtPath:filePath contents:imageData attributes:nil];
-    
-    AFHTTPRequestOperationManager * manager = [AFHTTPRequestOperationManager manager];
-    manager.requestSerializer.timeoutInterval =  [DefaultHttpManager timeOutInterval];
-    manager.responseSerializer.acceptableContentTypes =  [DefaultHttpManager acceptableContentTypes];
-    
+
+    NSMutableURLRequest *request = [[AFHTTPRequestSerializer serializer] multipartFormRequestWithMethod:@"POST" URLString:urlString parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+        [formData appendPartWithFileURL:[NSURL fileURLWithPath:filePath] name:imageKey fileName:fileName mimeType:@"image/png" error:nil];
+    } error:nil];
+
+    AFHTTPSessionManager * manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer.acceptableContentTypes = [DefaultHttpManager acceptableContentTypes];
+    if ([api hasPrefix:@"https"])
+    {
+        manager.securityPolicy.allowInvalidCertificates = YES;
+    }
     for (NSString *key in  [[DefaultHttpManager httpHeader] allKeys])
     {
-        [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
-    }
-    
-    NSURL *filePathURL = [NSURL fileURLWithPath:filePath];
-    [self addManager:manager ofUrl:urlString];
-
-    [manager POST:urlString parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
-        
-        [formData appendPartWithFileURL:filePathURL name:imageKey error:nil];
-        
-    } success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        [self removeManagerOfUrl:urlString];
-        
-        if ([responseObject isKindOfClass:[NSDictionary class]]) {
-            
-            if (success)
-            {
-                success(responseObject);
-            }
-        }else
+        if([DefaultHttpManager httpHeader][key])
         {
-            NSError *error = [NSError  errorWithDomain:@"不是json数据" code:URLRequestNotJson userInfo:nil];
-            if (failed) {
-                failed(@{@"error":error,
-                         @"response" :responseObject==nil?@"nil":responseObject});
-            }
-            
-            NSMutableDictionary * wrongResultDict= [ NSMutableDictionary  dictionaryWithCapacity:1];
-            if (responseObject) {
-                [wrongResultDict setObject:responseObject forKey:@"response"];
-            }else{
-                [wrongResultDict setObject:@"返回数据是空" forKey:@"response"];
-            }
-            if (success)
-            {
-                success(wrongResultDict);
-            }
+            [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
         }
+    }
+
+    NSLog(@"【POST】:\n %@",urlString);
+    NSLog(@"【Params】:\n %@",params);
+
+    NSURLSessionUploadTask *uploadTask = [manager uploadTaskWithStreamedRequest:request progress:^(NSProgress * _Nonnull uploadProgress) {
         
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+//        dispatch_async(dispatch_get_main_queue(), ^{
+//            [progressView setProgress:uploadProgress.fractionCompleted];
+//        });
+        
+    } completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
         
         [self removeManagerOfUrl:urlString];
-        
-        NSMutableDictionary * errorDict = [ NSMutableDictionary  dictionaryWithCapacity:2];
-        if ([error code] == NSURLErrorCancelled) {
-            NSLog(@"取消了请求:%@",urlString);
-        }
+
         if (error) {
-            [errorDict setObject:error forKey:@"error"];
-        }
-        if (operation.responseObject) {
-            [errorDict setObject:operation.responseObject forKey:@"response"];
-        }
-        if (failed) {
-            failed(errorDict);
+            NSLog(@"【Error】:\n %@",error);
+            if ([error code] == NSURLErrorCancelled) {
+                NSLog(@"取消了请求:%@",urlString);
+            }
+            
+            if (failed) {
+                failed(@{@"error":error});
+            }
+        
+        } else {
+            
+            NSLog(@"【Response】:\n %@",responseObject);
+            
+            if ([responseObject isKindOfClass:[NSDictionary class]])
+            {
+                if (success)
+                {
+                    success(responseObject);
+                }
+            }else{
+                //不是字典类型数据
+                if(responseObject){
+                    if ( success)
+                    {
+                        success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
+                    }
+                }
+            }
         }
     }];
-
+    [self addTask:uploadTask ofUrl:urlString];
 }
 
 #pragma mark -
 
 
-- (void)addManager:(AFHTTPRequestOperationManager*)manager ofUrl:(NSString *)urlString
+- (void)addTask:(NSURLSessionDataTask *)task ofUrl:(NSString *)urlString
 {
-    NSMutableDictionary * managerDict = objc_getAssociatedObject(self, &managersKey);
-    if (!managerDict ) {
-        managerDict = [NSMutableDictionary dictionaryWithCapacity:0];
+    if (!task)
+    {
+        return;
     }
-    [managerDict setObject:manager forKey:[self md5:urlString]];
+    NSMutableDictionary * taskDict = objc_getAssociatedObject(self, &tasksKey);
+    if (!taskDict ) {
+        taskDict = [NSMutableDictionary dictionaryWithCapacity:0];
+    }
+    [taskDict setObject:task forKey:[self md5:urlString]];
     
-    objc_setAssociatedObject(self, &managersKey, managerDict, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, &tasksKey, taskDict, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     
-//    NSLog(@"add : %@",urlString);
 }
 
 - (void)removeManagerOfUrl:(NSString *)urlString
 {
-    NSMutableDictionary * managerDict = objc_getAssociatedObject(self, &managersKey);
-    if (managerDict)
+    NSMutableDictionary * taskDict = objc_getAssociatedObject(self, &tasksKey);
+    if (taskDict)
     {
-        [managerDict removeObjectForKey:[self md5:urlString]];
-        objc_setAssociatedObject(self, &managersKey, managerDict, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [taskDict removeObjectForKey:[self md5:urlString]];
+        objc_setAssociatedObject(self, &tasksKey, taskDict, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-//    NSLog(@"remove : %@",urlString);
-
 }
 
 - (void)cancelRequestWithURLString:(NSString *)urlString
 {
-    NSMutableDictionary * managerDict = objc_getAssociatedObject(self, &managersKey);
-    if (managerDict)
+    NSMutableDictionary * taskDict = objc_getAssociatedObject(self, &tasksKey);
+    if (taskDict)
     {
-        AFHTTPRequestOperationManager * manager = [managerDict objectForKey:[self md5:urlString]];
-        if (manager) {
-            [manager.operationQueue cancelAllOperations];
+        NSURLSessionDataTask * task = [taskDict objectForKey:[self md5:urlString]];
+        if (task) {
+            [task cancel];
         }
         
         [self removeManagerOfUrl:urlString];
@@ -320,17 +303,17 @@ static char * const managersKey = "managersDict";
 
 - (void)cancelAllRequest
 {
-    NSMutableDictionary * managerDict = objc_getAssociatedObject(self, &managersKey);
-    if (managerDict)
+    NSMutableDictionary * taskDict = objc_getAssociatedObject(self, &tasksKey);
+    if (taskDict)
     {
-        for (NSString * key in managerDict) {
-            AFHTTPRequestOperationManager * manager = [managerDict objectForKey:key];
-            if (manager) {
-                [manager.operationQueue cancelAllOperations];
+        for (NSString * key in taskDict) {
+            NSURLSessionDataTask * task = [taskDict objectForKey:key];
+            if (task) {
+                [task cancel];
             }
         }
     }
-    objc_setAssociatedObject(self, &managersKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, &tasksKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (NSString *)md5:(NSString *)string {
