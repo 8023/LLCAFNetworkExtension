@@ -56,15 +56,25 @@
     delete2Button.frame = CGRectMake(60, 270, 200, 50);
     deleteButton.frame = CGRectMake(60, 340, 200, 50);
 
+
 }
+
 
 - (void)beginReqeust
 {
-    [self startRequestWithApi:@"http://hylapi.yuandalu.com/region" method:GetMethod params:nil showLoading:NO success:^(NSDictionary *result) {
-        NSLog(@"success: %@",result);
+//http://127.0.0.1:63342/LCPhpNetwork/localrequest.php
+//    http://192.168.99.194:8964/oauth2/token
+    [self startRequestWithApi:@"http://192.168.99.194:8964/oauth2/token" method:PostMethod_Form params:@{@"grant_type":@"password",@"username":@"sky1",@"password":@"135246",@"passwd_type":@"1"} success:^(NSDictionary *result) {
+        
     } failed:^(NSDictionary *result) {
-        NSLog(@"failed: %@",result);
+        
     }];
+    
+//    [self startRequestWithApi:@"http://hylapi.yuandalu.com/region" method:GetMethod params:nil success:^(NSDictionary *result) {
+//        NSLog(@"success: %@",result);
+//    } failed:^(NSDictionary *result) {
+//        NSLog(@"failed: %@",result);
+//    }];
 }
 
 - (void)removeRequest
@@ -85,7 +95,7 @@
 
 - (void)begin2Reqeust
 {
-    [self startRequestWithApi:@"http://hylapi.yuandalu.com/banner" method:GetMethod params:nil showLoading:NO success:^(NSDictionary *result) {
+    [self startRequestWithApi:@"http://hylapi.yuandalu.com/banner" method:GetMethod params:nil  success:^(NSDictionary *result) {
         NSLog(@"success: %@",result);
     } failed:^(NSDictionary *result) {
         NSLog(@"failed: %@",result);

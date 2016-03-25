@@ -30,6 +30,8 @@
  */
 + (NSSet *)acceptableContentTypes;
 
++ (NSString *)base64String:(NSString *)str;
+
 @end
 
 @implementation DefaultHttpManager
@@ -37,9 +39,15 @@
 + (NSDictionary *)httpHeader
 {
 
+    /**
+     2f6cebf8-ed1e-11e5-b7ad-acbc32acde63
+     1ee28ee1-3036-4828-a98a-c12a053b5bde
+     */
     NSMutableDictionary * httpHeader = [NSMutableDictionary dictionaryWithCapacity:0];
     //如果需要token 或其他头部设置请自己添加
-//    [httpHeader setObject:@"tokenString" forKey:@"token"];
+    NSString * str = @"2f6cebf8-ed1e-11e5-b7ad-acbc32acde63:1ee28ee1-3036-4828-a98a-c12a053b5bde";
+    NSString * basic = [DefaultHttpManager base64String:str];
+    [httpHeader setObject:[NSString stringWithFormat:@"Basic %@",basic] forKey:@"Authorization"];
     return httpHeader;
 }
 
@@ -52,6 +60,40 @@
 {
    return [NSSet setWithObjects: @"text/plain", @"text/html", @"application/json", @"text/javascript",nil];
 }
+
++ (NSString *)base64String:(NSString *)str
+{
+    NSData *theData = [str dataUsingEncoding: NSASCIIStringEncoding];
+    const uint8_t* input = (const uint8_t*)[theData bytes];
+    NSInteger length = [theData length];
+    
+    static char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    
+    NSMutableData* data = [NSMutableData dataWithLength:((length + 2) / 3) * 4];
+    uint8_t* output = (uint8_t*)data.mutableBytes;
+    
+    NSInteger i;
+    for (i=0; i < length; i += 3) {
+        NSInteger value = 0;
+        NSInteger j;
+        for (j = i; j < (i + 3); j++) {
+            value <<= 8;
+            
+            if (j < length) {
+                value |= (0xFF & input[j]);
+            }
+        }
+        
+        NSInteger theIndex = (i / 3) * 4;
+        output[theIndex + 0] =                    table[(value >> 18) & 0x3F];
+        output[theIndex + 1] =                    table[(value >> 12) & 0x3F];
+        output[theIndex + 2] = (i + 1) < length ? table[(value >> 6)  & 0x3F] : '=';
+        output[theIndex + 3] = (i + 2) < length ? table[(value >> 0)  & 0x3F] : '=';
+    }
+    
+    return [[NSString alloc] initWithData:data encoding:NSASCIIStringEncoding];
+}
+
 
 @end
 
@@ -82,7 +124,7 @@ static char * const tasksKey = "tasksDict";
             [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
         }
     }
-    
+
     
     NSURLSessionDataTask * task;
     switch (method) {
@@ -130,13 +172,13 @@ static char * const tasksKey = "tasksDict";
           
         }
             break;
-        case PostMethod:
+        case PostMethod_Json:
         {
             NSLog(@"【POST】:\n %@",urlString);
             NSLog(@"【Params】:\n %@",params);
             
-           task =  [manager POST:urlString parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
-                
+            task =  [manager POST:urlString parameters:params constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
+
             } progress:^(NSProgress * _Nonnull uploadProgress) {
                 
             } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
@@ -175,6 +217,56 @@ static char * const tasksKey = "tasksDict";
 
             }];
             
+            break;
+        }
+            
+        case PostMethod_Form:
+        {
+            NSLog(@"【POST】:\n %@",urlString);
+            NSLog(@"【Params】:\n %@",params);
+            
+            //表单
+            [manager.requestSerializer setValue:@"application/x-www-form-urlencoded"  forHTTPHeaderField:@"Content-Type"];
+            
+            [manager  POST:urlString parameters:params success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                
+                [self removeManagerOfUrl:urlString];
+                
+                NSLog(@"【Response】:\n %@",responseObject);
+                if ([responseObject isKindOfClass:[NSDictionary class]])
+                {
+                    if (success)
+                    {
+                        success(responseObject);
+                    }
+                }else{
+                    //不是字典类型数据
+                    if(responseObject){
+                        if ( success)
+                        {
+                            success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
+                        }
+                    }
+                }
+                
+                
+            } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                
+                [self removeManagerOfUrl:urlString];
+                
+                NSLog(@"【Error】:\n %@",error);
+                if ([error code] == NSURLErrorCancelled) {
+                    NSLog(@"取消了请求:%@",urlString);
+                }
+                
+                if (failed) {
+                    failed(@{@"error":error});
+                }
+                
+            }];
+            
+
+            break;
         }
         default:
             break;

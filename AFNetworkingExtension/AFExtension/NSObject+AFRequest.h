@@ -17,7 +17,8 @@ typedef NS_ENUM(NSUInteger, AFRequestMethod){
     
     GetMethod,
     
-    PostMethod,
+    PostMethod_Json,
+    PostMethod_Form,
     
     PutMethod,
     
