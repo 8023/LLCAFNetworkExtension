@@ -15,14 +15,20 @@
  */
 typedef NS_ENUM(NSUInteger, AFRequestMethod){
     
-    GetMethod,
-    
+    GetMethod,                  //默认 是json提交返回格式是Json
+    PostMethod,                 //默认 是json提交返回格式是Json
     PostMethod_Json,
-    PostMethod_Form,
+    PostMethod_Form,            //表单提交
     
     PutMethod,
     
     DeleteMethod
+};
+
+typedef NS_ENUM(NSUInteger, AFSerializeType) {
+    AFSerializeTypeDefault,
+    AFSerializeTypeJson,
+    AFSerializeTypeHttp
 };
 
 typedef NS_ENUM(NSInteger, URLRequrestErrorCode) {
@@ -35,7 +41,7 @@ typedef NS_ENUM(NSInteger, URLRequrestErrorCode) {
 /**
  *  请求结果回调
  */
-typedef void (^requestResultBlock)(NSDictionary * result);
+typedef void (^requestResultBlock)(NSURLSessionDataTask * task ,id result);
 
 
 @interface NSObject (AFRequest)
@@ -50,6 +56,10 @@ typedef void (^requestResultBlock)(NSDictionary * result);
  *  @param failed       请求失败回调
  */
 - (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed;
+
+
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed respondMethod:(AFSerializeType)serializeType;
+
 
 /**
  *  上传图片

@@ -64,11 +64,16 @@
 {
 //http://127.0.0.1:63342/LCPhpNetwork/localrequest.php
 //    http://192.168.99.194:8964/oauth2/token
-    [self startRequestWithApi:@"http://192.168.99.194:8964/oauth2/token" method:PostMethod_Form params:@{@"grant_type":@"password",@"username":@"sky1",@"password":@"135246",@"passwd_type":@"1"} success:^(NSDictionary *result) {
+    [self startRequestWithApi:@"http://192.168.99.194:8964/oauth2/captcha" method:GetMethod params:nil success:^(NSURLSessionDataTask * task ,id result) {
+        NSHTTPURLResponse * response = (NSHTTPURLResponse *) task.response;
+        NSLog(@"%@",response.allHeaderFields);
+    } failed:^(NSURLSessionDataTask * task ,id result) {
         
-    } failed:^(NSDictionary *result) {
-        
-    }];
+    } respondMethod:AFSerializeTypeHttp];
+    
+    
+
+    
     
 //    [self startRequestWithApi:@"http://hylapi.yuandalu.com/region" method:GetMethod params:nil success:^(NSDictionary *result) {
 //        NSLog(@"success: %@",result);
@@ -95,9 +100,9 @@
 
 - (void)begin2Reqeust
 {
-    [self startRequestWithApi:@"http://hylapi.yuandalu.com/banner" method:GetMethod params:nil  success:^(NSDictionary *result) {
+    [self startRequestWithApi:@"http://hylapi.yuandalu.com/banner" method:GetMethod params:nil  success:^(NSURLSessionDataTask * task ,id result) {
         NSLog(@"success: %@",result);
-    } failed:^(NSDictionary *result) {
+    } failed:^(NSURLSessionDataTask * task ,id result) {
         NSLog(@"failed: %@",result);
     }];
 }

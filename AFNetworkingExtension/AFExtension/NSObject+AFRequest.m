@@ -58,7 +58,7 @@
 
 + (NSSet *)acceptableContentTypes
 {
-   return [NSSet setWithObjects: @"text/plain", @"text/html", @"application/json", @"text/javascript",nil];
+   return [NSSet setWithObjects: @"text/plain", @"text/html", @"application/json", @"text/javascript",@"image/jpeg",nil];
 }
 
 + (NSString *)base64String:(NSString *)str
@@ -104,18 +104,38 @@ static char * const tasksKey = "tasksDict";
 
 @implementation NSObject (AFRequest)
 
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed
+{
+    [self startRequestWithApi:api method:method params:params success:success failed:failed respondMethod:AFSerializeTypeJson];
+}
 
--(void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary *)params success:(requestResultBlock)success failed:(requestResultBlock)failed
+-(void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary *)params success:(requestResultBlock)success failed:(requestResultBlock)failed  respondMethod:(AFSerializeType)serializeType
 {
     NSString * urlString =  [api stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     
     AFHTTPSessionManager * manager = [AFHTTPSessionManager manager];
+    
+    switch (serializeType) {
+        case AFSerializeTypeHttp:
+        {
+            manager.responseSerializer = [AFHTTPResponseSerializer serializer];
+        }
+            break;
+        case AFSerializeTypeJson:
+        {
+            manager.responseSerializer = [AFJSONResponseSerializer serializer];
+            
+        }
+            break;
+        default:
+            break;
+    }
+    
     manager.responseSerializer.acceptableContentTypes = [DefaultHttpManager acceptableContentTypes];
     if ([api hasPrefix:@"https"])
     {
         manager.securityPolicy.allowInvalidCertificates = YES;
     }
-
 
     for (NSString *key in  [[DefaultHttpManager httpHeader] allKeys])
     {
@@ -125,7 +145,7 @@ static char * const tasksKey = "tasksDict";
         }
     }
 
-    
+   
     NSURLSessionDataTask * task;
     switch (method) {
         case GetMethod:
@@ -140,20 +160,10 @@ static char * const tasksKey = "tasksDict";
                 [self removeManagerOfUrl:urlString];
                 
                 NSLog(@"【Response】:\n %@",responseObject);
-                if ([responseObject isKindOfClass:[NSDictionary class]])
+                
+                if (success)
                 {
-                    if (success)
-                    {
-                        success(responseObject);
-                    }
-                }else{
-                    //不是字典类型数据
-                    if(responseObject){
-                        if ( success)
-                        {
-                            success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
-                        }
-                    }
+                    success(task,responseObject);
                 }
 
             } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
@@ -166,12 +176,14 @@ static char * const tasksKey = "tasksDict";
                 }
                 
                 if (failed) {
-                    failed(@{@"error":error});
+                    failed(task,@{@"error":error});
                 }
             }];
           
         }
             break;
+            
+        case PostMethod:
         case PostMethod_Json:
         {
             NSLog(@"【POST】:\n %@",urlString);
@@ -186,22 +198,10 @@ static char * const tasksKey = "tasksDict";
                 [self removeManagerOfUrl:urlString];
 
                 NSLog(@"【Response】:\n %@",responseObject);
-                if ([responseObject isKindOfClass:[NSDictionary class]])
+                if (success)
                 {
-                    if (success)
-                    {
-                        success(responseObject);
-                    }
-                }else{
-                    //不是字典类型数据
-                    if(responseObject){
-                        if ( success)
-                        {
-                            success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
-                        }
-                    }
+                    success(task,responseObject);
                 }
-
             } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
                 
                 [self removeManagerOfUrl:urlString];
@@ -212,14 +212,12 @@ static char * const tasksKey = "tasksDict";
                 }
                 
                 if (failed) {
-                    failed(@{@"error":error});
+                    failed(task,@{@"error":error});
                 }
-
             }];
             
             break;
         }
-            
         case PostMethod_Form:
         {
             NSLog(@"【POST】:\n %@",urlString);
@@ -233,22 +231,10 @@ static char * const tasksKey = "tasksDict";
                 [self removeManagerOfUrl:urlString];
                 
                 NSLog(@"【Response】:\n %@",responseObject);
-                if ([responseObject isKindOfClass:[NSDictionary class]])
+                if (success)
                 {
-                    if (success)
-                    {
-                        success(responseObject);
-                    }
-                }else{
-                    //不是字典类型数据
-                    if(responseObject){
-                        if ( success)
-                        {
-                            success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
-                        }
-                    }
+                    success(task,responseObject);
                 }
-                
                 
             } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
                 
@@ -260,12 +246,10 @@ static char * const tasksKey = "tasksDict";
                 }
                 
                 if (failed) {
-                    failed(@{@"error":error});
+                    failed(task,@{@"error":error});
                 }
-                
             }];
             
-
             break;
         }
         default:
@@ -323,27 +307,16 @@ static char * const tasksKey = "tasksDict";
             }
             
             if (failed) {
-                failed(@{@"error":error});
+                failed(uploadTask,@{@"error":error});
             }
         
         } else {
             
             NSLog(@"【Response】:\n %@",responseObject);
             
-            if ([responseObject isKindOfClass:[NSDictionary class]])
+            if (success)
             {
-                if (success)
-                {
-                    success(responseObject);
-                }
-            }else{
-                //不是字典类型数据
-                if(responseObject){
-                    if ( success)
-                    {
-                        success(@{@"code":@(URLRequestNotDictionary),@"data":responseObject});
-                    }
-                }
+                success(uploadTask,responseObject);
             }
         }
     }];
