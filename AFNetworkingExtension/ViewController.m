@@ -73,7 +73,7 @@
     
     
 
-    
+    //dkdkdkdkdk
     
 //    [self startRequestWithApi:@"http://hylapi.yuandalu.com/region" method:GetMethod params:nil success:^(NSDictionary *result) {
 //        NSLog(@"success: %@",result);
@@ -101,6 +101,7 @@
 - (void)begin2Reqeust
 {
     [self startRequestWithApi:@"http://hylapi.yuandalu.com/banner" method:GetMethod params:nil  success:^(NSURLSessionDataTask * task ,id result) {
+        
         NSLog(@"success: %@",result);
     } failed:^(NSURLSessionDataTask * task ,id result) {
         NSLog(@"failed: %@",result);

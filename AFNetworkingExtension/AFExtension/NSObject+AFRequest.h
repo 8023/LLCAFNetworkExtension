@@ -17,11 +17,8 @@ typedef NS_ENUM(NSUInteger, AFRequestMethod){
     
     GetMethod,                  //默认 是json提交返回格式是Json
     PostMethod,                 //默认 是json提交返回格式是Json
-    PostMethod_Json,
     PostMethod_Form,            //表单提交
-    
     PutMethod,
-    
     DeleteMethod
 };
 
@@ -57,9 +54,11 @@ typedef void (^requestResultBlock)(NSURLSessionDataTask * task ,id result);
  */
 - (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed;
 
-
 - (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed respondMethod:(AFSerializeType)serializeType;
 
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed requestMethod:(AFSerializeType)serializeType;
+
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed requestMethod:(AFSerializeType)serializeType respondMethod:(AFSerializeType)serializeType;
 
 /**
  *  上传图片

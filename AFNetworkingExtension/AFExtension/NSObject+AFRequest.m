@@ -106,16 +106,93 @@ static char * const tasksKey = "tasksDict";
 
 - (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed
 {
-    [self startRequestWithApi:api method:method params:params success:success failed:failed respondMethod:AFSerializeTypeJson];
+    [self startRequestWithApi:api method:method params:params success:success failed:failed requestMethod:AFSerializeTypeJson respondMethod:AFSerializeTypeJson];
 }
+
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed requestMethod:(AFSerializeType)serializeType
+{
+    [self startRequestWithApi:api method:method params:params success:success failed:failed requestMethod:serializeType respondMethod:AFSerializeTypeJson];
+}
+
 
 -(void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary *)params success:(requestResultBlock)success failed:(requestResultBlock)failed  respondMethod:(AFSerializeType)serializeType
 {
+    [self startRequestWithApi:api method:method params:params success:success failed:failed requestMethod:AFSerializeTypeJson respondMethod:serializeType];
+}
+
+- (void)startRequestWithApi:(NSString *)api method:(AFRequestMethod)method params:(NSDictionary*)params success:(requestResultBlock)success failed:(requestResultBlock)failed requestMethod:(AFSerializeType)requestSerializeType respondMethod:(AFSerializeType)respondSerializeType
+{
+    //网络检测
+    [[AFNetworkReachabilityManager sharedManager] startMonitoring];
+    
+    [[AFNetworkReachabilityManager sharedManager] setReachabilityStatusChangeBlock:^(AFNetworkReachabilityStatus status) {
+        switch (status) {
+            case AFNetworkReachabilityStatusUnknown:
+            {
+                NSLog(@"未知");
+                return ;
+            }
+                break;
+            case AFNetworkReachabilityStatusNotReachable:
+            {
+                NSLog(@"无网络");
+                return ;
+            }
+                break;
+            case AFNetworkReachabilityStatusReachableViaWWAN:
+            {
+                NSLog(@"手机网络");
+            }
+                break;
+            case AFNetworkReachabilityStatusReachableViaWiFi:
+            {
+                NSLog(@"WiFi网络");
+            }
+                break;
+            default:
+                break;
+        }
+    }];
+
+    
     NSString * urlString =  [api stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     
     AFHTTPSessionManager * manager = [AFHTTPSessionManager manager];
     
-    switch (serializeType) {
+    if ([api hasPrefix:@"https"])
+    {
+        manager.securityPolicy.allowInvalidCertificates = YES;
+    }
+
+    //request设置
+    
+    switch (requestSerializeType) {
+        case AFSerializeTypeHttp:
+        {
+            manager.requestSerializer = [AFHTTPRequestSerializer serializer];
+        }
+            break;
+        case AFSerializeTypeJson:
+        {
+            manager.requestSerializer = [AFJSONRequestSerializer serializer];
+            
+        }
+            break;
+        default:
+            break;
+    }
+    
+    for (NSString *key in  [[DefaultHttpManager httpHeader] allKeys])
+    {
+        if([DefaultHttpManager httpHeader][key])
+        {
+            [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
+        }
+    }
+    
+    //response设置
+
+    switch (respondSerializeType) {
         case AFSerializeTypeHttp:
         {
             manager.responseSerializer = [AFHTTPResponseSerializer serializer];
@@ -124,7 +201,6 @@ static char * const tasksKey = "tasksDict";
         case AFSerializeTypeJson:
         {
             manager.responseSerializer = [AFJSONResponseSerializer serializer];
-            
         }
             break;
         default:
@@ -132,20 +208,10 @@ static char * const tasksKey = "tasksDict";
     }
     
     manager.responseSerializer.acceptableContentTypes = [DefaultHttpManager acceptableContentTypes];
-    if ([api hasPrefix:@"https"])
-    {
-        manager.securityPolicy.allowInvalidCertificates = YES;
-    }
 
-    for (NSString *key in  [[DefaultHttpManager httpHeader] allKeys])
-    {
-        if([DefaultHttpManager httpHeader][key])
-        {
-            [manager.requestSerializer setValue:[DefaultHttpManager httpHeader][key] forHTTPHeaderField:key];
-        }
-    }
 
-   
+   //task请求
+    
     NSURLSessionDataTask * task;
     switch (method) {
         case GetMethod:
@@ -184,7 +250,6 @@ static char * const tasksKey = "tasksDict";
             break;
             
         case PostMethod:
-        case PostMethod_Json:
         {
             NSLog(@"【POST】:\n %@",urlString);
             NSLog(@"【Params】:\n %@",params);
@@ -226,7 +291,9 @@ static char * const tasksKey = "tasksDict";
             //表单
             [manager.requestSerializer setValue:@"application/x-www-form-urlencoded"  forHTTPHeaderField:@"Content-Type"];
             
-            [manager  POST:urlString parameters:params success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+            [manager POST:urlString parameters:params progress:^(NSProgress * _Nonnull uploadProgress) {
+                
+            } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
                 
                 [self removeManagerOfUrl:urlString];
                 
@@ -235,7 +302,7 @@ static char * const tasksKey = "tasksDict";
                 {
                     success(task,responseObject);
                 }
-                
+
             } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
                 
                 [self removeManagerOfUrl:urlString];
@@ -248,6 +315,7 @@ static char * const tasksKey = "tasksDict";
                 if (failed) {
                     failed(task,@{@"error":error});
                 }
+
             }];
             
             break;
